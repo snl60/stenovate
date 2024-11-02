@@ -1,8 +1,14 @@
 from tkinter import filedialog, messagebox, simpledialog
+
+import torch.cuda
 import whisper
 import os
-from config import get_default_audio_folder, set_default_audio_folder, get_default_transcript_save_folder, \
+from config import (
+    get_default_audio_folder,
+    set_default_audio_folder,
+    get_default_transcript_save_folder,
     set_default_transcript_save_folder
+)
 
 
 def prompt_for_custom_filename(root, default_name):
@@ -16,7 +22,11 @@ def prompt_for_custom_filename(root, default_name):
     Returns:
     - The custom file name entered by the user or the default name if none is provided.
     """
-    custom_file_name = simpledialog.askstring("File Name", "Enter a name for the transcript file:", parent=root)
+    custom_file_name = simpledialog.askstring(
+        "File Name",
+        "Enter a name for the transcript file:",
+        parent=root
+    )
     if not custom_file_name:
         messagebox.showinfo("Info", "No filename entered. Using default.")
         return default_name
@@ -35,8 +45,11 @@ def check_for_overwrite_and_proceed(root, file_path):
     - True if the file doesn't exist or the user confirms overwriting, False otherwise.
     """
     if os.path.exists(file_path):
-        return messagebox.askyesno("Overwrite File", "The file already exists. Do you want to overwrite it?",
-                                   parent=root)
+        return messagebox.askyesno(
+            "Overwrite File",
+            "The file already exists. Do you want to overwrite it?",
+            parent=root
+        )
     return True
 
 
@@ -55,7 +68,7 @@ def transcribe_audio(root):
         filetypes=(("Audio Files", "*.mp3 *.wav *.m4a *.flac"), ("All Files", "*.*"))
     )
     if not audio_path:
-        return # Exit if user cancels
+        return  # Exit if user cancels
 
     # Update the default directory based on user's choice
     audio_dir = os.path.dirname(audio_path)
@@ -79,14 +92,20 @@ def transcribe_audio(root):
 
     # Check if the transcript file already exists and confirm overwrite if necessary
     if not check_for_overwrite_and_proceed(root, transcript_path):
-        return # Exit if the user does not want to overwrite existing file
+        return  # Exit if the user does not want to overwrite existing file
 
     # Step 4: Load and transcribe audio using Whisper
-    model = whisper.load_model("base")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = whisper.load_model("base", device=device)
     result = model.transcribe(audio_path)
+    text = result["text"]
+    corrected_text = text.replace("Stenevate", "Stenovate")
 
     with open(transcript_path, 'w') as file:
-        file.write(result["text"])
+        file.write(corrected_text)
 
     # Inform the user of success
-    messagebox.showinfo("Success", f"Transcript saved successfully at:\n{transcript_path}")
+    messagebox.showinfo(
+        "Success",
+        f"Transcript saved successfully at:\n{transcript_path}"
+    )
